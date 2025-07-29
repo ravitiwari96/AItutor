@@ -14,7 +14,7 @@ class StudentSignupSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = User
+        model = User    
         fields = ['full_name', 'email', 'phone_number', 'date_of_birth', 'grade_level', 'password', 'confirm_password']
 
     def validate(self, attrs):
