@@ -48,7 +48,7 @@ class StudentSignupSerializer(serializers.ModelSerializer):
             is_student=True,
             password=password
         )
-
+            
         return user
 
 class AdminSignupSerializer(serializers.ModelSerializer):
@@ -137,3 +137,71 @@ class UserSerializer(serializers.ModelSerializer):
         elif obj.is_admin_user:
             return 'admin'
         return 'user'
+
+class StudentUpdateSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(max_length=255, required=False)
+    
+    class Meta:
+        model = User
+        fields = ['full_name', 'email', 'phone', 'dob', 'grade_level']
+    
+    def validate_email(self, value):
+        if self.instance and self.instance.email != value:
+            if User.objects.filter(email=value).exists():
+                raise serializers.ValidationError("A user with this email already exists.")
+        return value
+    
+    def update(self, instance, validated_data):
+        if 'full_name' in validated_data:
+            full_name = validated_data.pop('full_name')
+            name_parts = full_name.split(' ', 1)
+            instance.first_name = name_parts[0]
+            instance.last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
+
+class AdminUpdateSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(max_length=255, required=False)
+    
+    class Meta:
+        model = User
+        fields = ['full_name', 'email', 'phone']
+    
+    def validate_email(self, value):
+        if self.instance and self.instance.email != value:
+            if User.objects.filter(email=value).exists():
+                raise serializers.ValidationError("A user with this email already exists.")
+        return value
+    
+    def update(self, instance, validated_data):
+        if 'full_name' in validated_data:
+            full_name = validated_data.pop('full_name')
+            name_parts = full_name.split(' ', 1)
+            instance.first_name = name_parts[0]
+            instance.last_name = name_parts[1] if len(name_parts) > 1 else ''
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
+
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_new_password = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_new_password']:
+            raise serializers.ValidationError({"confirm_new_password": "New passwords do not match."})
+        return attrs
+    
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value

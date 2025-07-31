@@ -4,8 +4,18 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate
-from .serializers import StudentSignupSerializer, AdminSignupSerializer, LoginSerializer, UserSerializer
-from .models import User
+from django.shortcuts import get_object_or_404
+
+from .serializers import (
+    StudentSignupSerializer, 
+    AdminSignupSerializer, 
+    LoginSerializer, 
+    UserSerializer,
+    StudentUpdateSerializer,
+    AdminUpdateSerializer,
+    PasswordChangeSerializer
+)
+from .models import User    
 
 class StudentSignupView(APIView):
     """
@@ -115,16 +125,12 @@ class LogoutView(APIView):
 
 class StudentListView(APIView):
     """
-    API endpoint for admins to view all students
-    Requires admin authentication
+    API endpoint to view all students
+    Public access allowed
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     
     def get(self, request):
-        if not request.user.is_admin_user:
-            return Response({"error": "Access denied. Admin privileges required."}, 
-                          status=status.HTTP_403_FORBIDDEN)
-        
         students = User.objects.filter(is_student=True)
         serializer = UserSerializer(students, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -144,3 +150,166 @@ class AdminListView(APIView):
         admins = User.objects.filter(is_admin_user=True)
         serializer = UserSerializer(admins, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+# CRUD Views for Students
+class StudentDetailView(APIView):
+    """
+    Retrieve, update or delete a student instance.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_object(self, pk):
+        return get_object_or_404(User, pk=pk, is_student=True)
+    
+    def get(self, request, pk):
+        """Get student details"""
+        # Students can view their own profile, admins can view any student
+        if not request.user.is_admin_user and request.user.id != int(pk):
+            return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+        
+        student = self.get_object(pk)
+        serializer = UserSerializer(student)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def put(self, request, pk):
+        """Update student details"""
+        # Students can update their own profile, admins can update any student
+        if not request.user.is_admin_user and request.user.id != int(pk):
+            return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+        
+        student = self.get_object(pk)
+        serializer = StudentUpdateSerializer(student, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Student updated successfully.",
+                "student": UserSerializer(student).data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        """Delete student account"""
+        # Only admins can delete student accounts
+        if not request.user.is_admin_user:
+            return Response({"error": "Access denied. Admin privileges required."}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        student = self.get_object(pk)
+        student_email = student.email
+        student.delete()
+        return Response({
+            "message": f"Student account {student_email} deleted successfully."
+        }, status=status.HTTP_200_OK)
+
+class AdminDetailView(APIView):
+    """
+    Retrieve, update or delete an admin instance.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get_object(self, pk):
+        return get_object_or_404(User, pk=pk, is_admin_user=True)
+    
+    def get(self, request, pk):
+        """Get admin details"""
+        # Admins can view their own profile or other admin profiles
+        if not request.user.is_admin_user:
+            return Response({"error": "Access denied. Admin privileges required."}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        admin = self.get_object(pk)
+        serializer = UserSerializer(admin)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def put(self, request, pk):
+        """Update admin details"""
+        # Admins can update their own profile
+        if request.user.id != int(pk) and not request.user.is_superuser:
+            return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+        
+        admin = self.get_object(pk)
+        serializer = AdminUpdateSerializer(admin, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Admin updated successfully.",
+                "admin": UserSerializer(admin).data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        """Delete admin account"""
+        # Only superuser can delete admin accounts
+        if not request.user.is_superuser:
+            return Response({"error": "Access denied. Superuser privileges required."}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        admin = self.get_object(pk)
+        admin_email = admin.email
+        admin.delete()
+        return Response({
+            "message": f"Admin account {admin_email} deleted successfully."
+        }, status=status.HTTP_200_OK)
+
+class ChangePasswordView(APIView):
+    """
+    Change user password
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            user = request.user
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+            
+            # Delete old token and create new one
+            Token.objects.filter(user=user).delete()
+            token = Token.objects.create(user=user)
+            
+            return Response({
+                "message": "Password changed successfully.",
+                "token": token.key
+            }, status=status.HTTP_200_OK)   
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class StudentCreateView(APIView):
+    """
+    Create a new student (for admins)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        if not request.user.is_admin_user:
+            return Response({"error": "Access denied. Admin privileges required."}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = StudentSignupSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                "message": "Student created successfully.",
+                "student": UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminCreateView(APIView):
+    """
+    Create a new admin (for superusers)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response({"error": "Access denied. Superuser privileges required."}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = AdminSignupSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                "message": "Admin created successfully.",
+                "admin": UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)      

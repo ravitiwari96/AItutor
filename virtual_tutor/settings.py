@@ -11,7 +11,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
-from decouple import config
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,13 +28,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-gn@ew4-5^yp6z(&6ugx75j^0la577tqx8r*homhhmx8*fw%)a%"
 
 # SECURITY WARNING: don't run with debug turned on in production!
+
 DEBUG = True
-
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ['*']
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+CORS_ORIGIN_ALLOW_ALL = True
+# Optional: Set X-Frame-Options header to allow specific origins for embedding your site in frames
+X_FRAME_OPTIONS = 'ALLOWALL'
+ 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",  
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000"
+]
+ 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+]
 
 AUTH_USER_MODEL = 'account.User'
-ADMIN_CODE = 'AiTutor@2025!'
+ADMIN_CODE = 'AiTutor@2025!'  
+
+# API Keys Configuration
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 # Application definition
 
@@ -44,6 +68,7 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "account",
     "corsheaders",
+    "ai_generator",
 ]
 
 MIDDLEWARE = [
@@ -56,12 +81,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
 ]
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "virtual_tutor.urls"
 
@@ -90,11 +109,11 @@ WSGI_APPLICATION = "virtual_tutor.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='3306'),
+        'NAME': os.environ.get('DB_NAME', 'virtual_tutor_db'),
+        'USER': os.environ.get('DB_USER', 'root'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'root'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci",
@@ -149,7 +168,7 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticated',   
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',

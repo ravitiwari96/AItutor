@@ -21,3 +21,22 @@ Thumbs.db
 # Environment files
 .env
 .env.*
+
+# Django specific
+db.sqlite3
+db.sqlite3-journal
+
+# Test files (if you want to exclude them)
+test_*.py
+*_test.py
+
+# Media files (uploads)
+media/
+
+# Static files (when collected)
+staticfiles/
+static_root/
+
+# Local development files
+*.bak
+*.tmp
