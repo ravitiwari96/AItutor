@@ -7,4 +7,4 @@ mysqlclient
 requests
 python-dotenv
 google-generativeai
-Pillow
+pillow
