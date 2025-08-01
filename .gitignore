@@ -1,0 +1,58 @@
+# 🚫 Ignore migrations from all apps
+**/migrations/
+!**/migrations/__init__.py
+
+**/migrations/
+!*/migrations/__init__.py
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*.so
+ 
+# Virtual environment
+env/
+venv/
+ENV/
+*.egg-info/
+ 
+# 📦 Virtual environment
+myenv/
+venv/
+env/
+**/env/
+**/venv/
+**/myenv/
+
+
+# IDE/editor folders
+.vscode/
+.idea/
+ 
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+ 
+# Environment files
+.env
+.env.*
+
+# Django specific
+db.sqlite3
+db.sqlite3-journal
+
+# Test files (if you want to exclude them)
+test_*.py
+*_test.py
+
+# Media files (uploads)
+media/
+
+# Static files (when collected)
+staticfiles/
+static_root/
+
+# Local development files
+*.bak
+*.tmp
