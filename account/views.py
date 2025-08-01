@@ -6,23 +6,12 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
 
-from .serializers import (
-    StudentSignupSerializer, 
-    AdminSignupSerializer, 
-    LoginSerializer, 
-    UserSerializer,
-    StudentUpdateSerializer,
-    AdminUpdateSerializer,
-    PasswordChangeSerializer
-)
+from .serializers import *
 from .models import User    
 
 class StudentSignupView(APIView):
-    """
-    API endpoint for student registration
-    Required fields: full_name, email, phone_number, date_of_birth, grade_level, password, confirm_password
-    """
-    permission_classes = [AllowAny]  # Allow unauthenticated access
+   
+    permission_classes = [AllowAny] 
     
     def post(self, request):
         serializer = StudentSignupSerializer(data=request.data)
